@@ -10,6 +10,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.apache.velocity.runtime.directive.Foreach;
 import org.springframework.stereotype.Service;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
 /**
  * <p>
  *  服务实现类
@@ -23,10 +28,40 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public String parseQueryRules(String queryRules) {
-        StringBuffer sql = new StringBuffer();
+        StringBuffer sql = new StringBuffer("select id,name,category,price from product ");
         JSONObject group = JSONObject.parseObject(queryRules);
-        String result = sql.append(recursion(group)).toString();
-        return result;
+        sql.append(recursion(group)).toString();
+        try {
+            //加载驱动
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            //数据库地址，本机、端口号3306、数据库名为test
+            String url = "jdbc:mysql://localhost:3306/query_builder?serverTimezone=GMT%2B8&characterEncoding=utf-8";
+            //用户名
+            String user = "root";
+            //密码
+            String pwd = "123456";
+            //连接数据库
+            Connection conn = DriverManager.getConnection(url, user, pwd);
+            //创建Statement对象
+            Statement stmt = conn.createStatement();
+            //执行SQL语句
+            ResultSet rs = stmt.executeQuery(sql.toString());
+            JSONArray jsonArray = new JSONArray();
+            while (rs.next()){
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("id",rs.getString("id"));
+                jsonObject.put("name",rs.getString("name"));
+                jsonObject.put("category",rs.getString("category"));
+                jsonObject.put("price",rs.getString("price"));
+                jsonArray.add(jsonObject);
+            }
+            sql.append("\n\n查询结果:\n");
+            sql.append(jsonArray);
+            System.out.println(jsonArray);
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        return sql.toString();
     }
 
     public String recursion(JSONObject group){
